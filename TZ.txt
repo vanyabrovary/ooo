@@ -1,0 +1,107 @@
++ Существует таблица loan (PostgeSQL)
+
++ Для работы с БД используется DBIx::Class
++ Пример добавления записи в таблицу:
+
+my $params = {
+    type        => 'request',
+    client_id   => 12,
+    state       => 'new',
+    .....
+
+};
+
+my $skip_params = [];
+my $ferrors = DB->model('Loan')->validate($params, $skip_params);
+
+unless ($ferrors) {
+    my $loan = DB->model('Loan')->create($params);
+}
+
++ Необходимо написать метод validate
++ При успешной валидации метод возвращает пустой return;
+При неуспешной хешреф вида
+{
+    fileldname1 => {
+        code => 'TEXT_ERROR_CODE',
+    },
+    fileldname2 => {
+        code => 'TEXT_ERROR_CODE',
+    }
+}
+
++ Параметры, имена которых переданы в массиве $skip_params необходимо пропускать при валидации
++ Также обязательность параметров определяется таблицей в БД (not null)
++ Типы также описаны в таблице
+* Для поля principal_amount необходимо также определить константы MIN, MAX и учитывать при валидации
+* ltv_initial, ltv_margin_call, ltv_collateral_sale - это проценты соотвественно есть MIN MAX значение
+  также обязательное условие при валидации: ltv_initial < ltv_margin_call < ltv_collateral_sale
+* principal_currency, collateral_currency - определить дополнительные списки-константы или хеши-константы возможных значений
+* interest_rate - проценты - соотвественно есть MIN MAX значение
+* term - необходимо проверять также на допустимый диапазон в зависимости от term_type
+* client_id - необходимо проверять существование клиента DB->model('Client')->......
+
+
++ Также написать SQL который на уровне БД будет создавать CHECK для таблицы
+необходимо проверять поля
+principal_amount, ltv_initial, ltv_margin_call, ltv_collateral_sale, interest_rate по тому же принципу что и в валидации
+диапазоны значений можно захардкодить
+
+
+Описание таблицы и типов
+
+                                                      Table "public.loan"
+       Column        |            Type             |                     Modifiers                     | Storage | Description
+---------------------+-----------------------------+---------------------------------------------------+---------+-------------
+ id                  | integer                     | not null default nextval('loan_id_seq'::regclass) | plain   |
+ type                | loan_type                   | not null                                          | plain   |
+ client_id           | integer                     |                                                   | plain   |
+ email               | character varying(255)      | not null                                          | extended|
+ created_at          | timestamp without time zone | not null default timezone('utc'::text, now())     | plain   |
+ opened_at           | timestamp without time zone |                                                   | plain   |
+ cancelled_at        | timestamp without time zone |                                                   | plain   |
+ state               | loan_state                  | not null default 'new'::loan_state                | plain   |
+ principal_amount    | numeric(16,8)               |                                                   | main    |
+ principal_currency  | currency_code               | not null                                          | plain   |
+ term_type           | loan_term_type              | not null                                          | plain   |
+ term                | smallint                    | not null                                          | plain   |
+ interest_rate       | numeric(5,2)                | not null                                          | main    |
+ ltv_initial         | numeric(5,2)                | not null                                          | main    |
+ ltv_margin_call     | numeric(5,2)                | not null                                          | main    |
+ ltv_collateral_sale | numeric(5,2)                | not null                                          | main    |
+ collateral_currency | currency_code               | not null                                          | plain   |
+
+
+Описание собственных типов используемых в таблице
+
+ Schema |   Name    | Internal name | Size | Elements | Description
+--------+-----------+---------------+------+----------+-------------
+ public | loan_type | loan_type     | 4    | offer   +|
+        |           |               |      | request  |
+--------------------------------------------------------------------
+
+
+ Schema |    Name    | Internal name | Size | Elements  | Description
+--------+------------+---------------+------+-----------+-------------
+ public | loan_state | loan_state    | 4    | new      +|
+        |            |               |      | open     +|
+        |            |               |      | cancelled+|
+        |            |               |      | success   |
+----------------------------------------------------------------------
+
+
+ Schema |     Name      | Internal name | Size | Elements | Description
+--------+---------------+---------------+------+----------+-------------
+ public | currency_code | currency_code | 4    | BTC     +|
+        |               |               |      | USD     +|
+        |               |               |      | EUR     +|
+        |               |               |      | USDT     |
+------------------------------------------------------------------------
+
+
+ Schema |      Name      | Internal name  | Size | Elements | Description
+--------+----------------+----------------+------+----------+-------------
+ public | loan_term_type | loan_term_type | 4    | d       +|
+        |                |                |      | m       +|
+        |                |                |      | y        |
+--------------------------------------------------------------------------

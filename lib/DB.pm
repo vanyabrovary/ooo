@@ -25,11 +25,8 @@ BEGIN {
         my $type       = $self->{table};
         my $location   = "Validator/$type.pm";
         my $this_class = "Validator::$type";
-
         require $location;
-
         my $result = $this_class->new(@_);
-
         return $result->validate();
     }
 

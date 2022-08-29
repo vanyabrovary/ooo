@@ -23,24 +23,7 @@ BEGIN {
     sub validate {
         my $self       = shift;
         my $type       = $self->{table};
-
-        ## Added die unless model file isn't exec
-
         my $location   = "Validator/$type.pm";
-
-        my $file = $location;
-
-        my (@description, $size);
-
-        if ($file) {
-
-           push @description, 'readable' if (-r _);
-
-           print "$file is ", join(', ',@description),"\n";
-
-        }
-
-
         my $this_class = "Validator::$type";
 
         require $location;
